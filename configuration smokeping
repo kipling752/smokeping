@@ -1,0 +1,75 @@
+yum install perl -y
+yum install epel-release -y
+
+yum install rrdtool perl-rrdtool openssl-devel -y
+
+yum install -y epel-release.noarch -y
+
+yum groupinstall "Development tools" -y
+
+yum install perl httpd httpd-devel mod_fcgid rrdtool perl-CGI-SpeedyCGI fping rrdtool-perl perl-Sys-Syslog openssl-devel perl-CPAN perl-local-lib perl-Time-HiRes perl-core wget -y
+
+
+wget https://oss.oetiker.ch/smokeping/pub/smokeping-2.7.3.tar.gz
+tar -xvf smokeping-2.7.3.tar.gz
+cd smokeping-2.7.3/
+cp -r thirdparty /opt/smokeping/
+./configure --prefix=/opt/smokeping
+/usr/bin/gmake install
+
+
+mkdir -p /var/www/smokeping/data
+mkdir /opt/smokeping/var
+mkdir /var/www/smokeping/cache
+cp -R /opt/smokeping/htdocs/* /var/www/smokeping
+mv /var/www/smokeping/smokeping.fcgi.dist /var/www/smokeping/smokeping.fcgi
+chown -R apache:apache /var/www/smokeping
+cp /opt/smokeping/etc/config.dist /opt/smokeping/etc/config
+chmod 600 /opt/smokeping/etc/smokeping_secrets.dist
+
+
+cp /opt/smokeping/etc/basepage.html.dist   /opt/smokeping/etc/basepage.html
+
+vim /etc/smokeping/config 
+
+vim /opt/smokeping/etc/config
+
+ owner    = your owner name
+ contact  = root@localhost
+ imgcache = /var/www/smokeping/cache
+ cgiurl   = http://192.168.1.100/smokeping.cgi
+
+
+vim /etc/httpd/conf.d/smokeping.conf
+
+Alias /smokeping "/var/www/smokeping"
+<Directory /var/www/smokeping>
+Options Indexes FollowSymLinks MultiViews ExecCGI
+ AllowOverride All
+ Order allow,deny
+ Allow from all
+ DirectoryIndex smokeping.fcgi
+</Directory>
+
+
+vim /usr/lib/systemd/system/smokeping.service 
+
+
+
+[Unit]
+Description=Smokeping Server
+After=network.target remote-fs.target nss-lookup.target
+ 
+[Service]
+Type=simple
+ExecStart=/opt/smokeping/bin/smokeping --nodaemon --config=/opt/smokeping/etc/config --logfile=/var/log/smokeping.log
+ 
+[Install]
+WantedBy=multi-user.target
+
+
+systemctl start smokeping.service && systemctl enable smokeping.service 
+systemctl restart httpd
+
+
+http://ip_address/smokeping
